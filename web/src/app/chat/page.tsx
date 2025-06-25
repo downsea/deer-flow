@@ -14,6 +14,7 @@ import { Logo } from "../../components/deer-flow/logo";
 import { ThemeToggle } from "../../components/deer-flow/theme-toggle";
 import { Tooltip } from "../../components/deer-flow/tooltip";
 import { SettingsDialog } from "../settings/dialogs/settings-dialog";
+import { HistoryDialog } from "./components/history-dialog";
 
 const Main = dynamic(() => import("./main"), {
   ssr: false,
@@ -41,6 +42,7 @@ export default function HomePage() {
             </Button>
           </Tooltip>
           <ThemeToggle />
+          <HistoryDialog />
           <Suspense>
             <SettingsDialog />
           </Suspense>
