@@ -71,3 +71,28 @@ def test_get_llm_by_type_caches(monkeypatch, dummy_conf):
     assert isinstance(inst1, llm.SanitizedChatModel)
     assert isinstance(inst1._inner, DummyChatOpenAI)
     assert called["called"]
+
+
+def test_sanitized_chat_model_trims(monkeypatch):
+    monkeypatch.setenv("LLM_MAX_TOKENS", "6")
+    monkeypatch.setenv("LLM_RESPONSE_RESERVE_TOKENS", "0")
+
+    class RecordingDummy:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.last_messages = None
+
+        def invoke(self, messages):
+            self.last_messages = messages
+            return "ok"
+
+    model = llm.SanitizedChatModel(RecordingDummy())
+    msgs = [
+        {"role": "user", "content": "one two three"},
+        {"role": "assistant", "content": "four five"},
+        {"role": "user", "content": "six"},
+    ]
+    model.invoke(msgs)
+
+    # With max tokens 6, the first message should be trimmed
+    assert model._inner.last_messages == msgs[1:]

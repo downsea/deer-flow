@@ -11,7 +11,10 @@ from typing import get_args
 
 from src.config import load_yaml_config
 from src.config.agents import LLMType
-from src.utils import sanitize_messages
+from src.utils import (
+    sanitize_messages,
+    trim_messages_to_tokens,
+)
 
 
 class SanitizedChatModel:
@@ -21,7 +24,10 @@ class SanitizedChatModel:
         self._inner = inner_model
 
     def _sanitize(self, messages):
-        return sanitize_messages(messages)
+        sanitized = sanitize_messages(messages)
+        max_tokens = int(os.getenv("LLM_MAX_TOKENS", "16000"))
+        reserve_tokens = int(os.getenv("LLM_RESPONSE_RESERVE_TOKENS", "1024"))
+        return trim_messages_to_tokens(sanitized, max_tokens, reserve_tokens)
 
     def invoke(self, messages, **kwargs):
         return self._inner.invoke(self._sanitize(messages), **kwargs)
