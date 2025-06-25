@@ -4,15 +4,22 @@ export function parseJSON<T>(json: string | null | undefined, fallback: T) {
   if (!json) {
     return fallback;
   }
+  
+  const raw = json
+    .trim()
+    .replace(/^```js\s*/, "")
+    .replace(/^```json\s*/, "")
+    .replace(/^```ts\s*/, "")
+    .replace(/^```plaintext\s*/, "")
+    .replace(/^```\s*/, "")
+    .replace(/\s*```$/, "");
+
+  // Handle empty objects/arrays case
+  if (raw === "{}" || raw === "[]") {
+    return JSON.parse(raw) as T;
+  }
+
   try {
-    const raw = json
-      .trim()
-      .replace(/^```js\s*/, "")
-      .replace(/^```json\s*/, "")
-      .replace(/^```ts\s*/, "")
-      .replace(/^```plaintext\s*/, "")
-      .replace(/^```\s*/, "")
-      .replace(/\s*```$/, "");
     return parse(raw) as T;
   } catch {
     return fallback;
