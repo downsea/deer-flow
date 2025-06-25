@@ -41,6 +41,8 @@ from src.server.rag_request import (
 from src.server.config_request import ConfigResponse
 from src.llms.llm import get_configured_llm_models
 from src.tools import VolcengineTTS
+from src.server.history_db import init_db, list_threads, get_thread, save_thread
+from src.server.history_request import HistorySaveRequest
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,7 @@ app.add_middleware(
 )
 
 graph = build_graph_with_memory()
+init_db()
 
 
 @app.post("/api/chat/stream")
@@ -414,3 +417,22 @@ async def config():
         rag=RAGConfigResponse(provider=SELECTED_RAG_PROVIDER),
         models=get_configured_llm_models(),
     )
+
+
+@app.get("/api/history")
+def history_list():
+    """List saved conversation threads."""
+    return list_threads()
+
+
+@app.get("/api/history/{thread_id}")
+def history_detail(thread_id: str):
+    """Get messages for a conversation."""
+    return get_thread(thread_id)
+
+
+@app.post("/api/history")
+def history_save(request: HistorySaveRequest):
+    """Save a conversation thread."""
+    save_thread(request.id, request.title, [m.model_dump() for m in request.messages])
+    return {"status": "ok"}

@@ -7,6 +7,7 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
 import { chatStream, generatePodcast } from "../api";
+import { saveHistory } from "../api/history";
 import type { Message, Resource } from "../messages";
 import { mergeMessage } from "../messages";
 import { parseJSON } from "../utils";
@@ -209,6 +210,7 @@ function updateMessage(message: Message) {
     !message.isStreaming
   ) {
     useStore.getState().setOngoingResearch(null);
+    void persistHistory();
   }
   useStore.getState().updateMessage(message);
 }
@@ -398,4 +400,18 @@ export function useToolCalls() {
         .flat();
     }),
   );
+}
+
+async function persistHistory() {
+  const state = useStore.getState();
+  if (!state.threadId) return;
+  const messages = state.messageIds
+    .map((id) => state.messages.get(id))
+    .filter((m): m is Message => m !== undefined);
+  const title = messages.find((m) => m.agent === "planner")?.content ?? "";
+  try {
+    await saveHistory(state.threadId, title, messages);
+  } catch (e) {
+    console.error(e);
+  }
 }
