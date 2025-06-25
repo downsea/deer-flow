@@ -11,9 +11,36 @@ from typing import get_args
 
 from src.config import load_yaml_config
 from src.config.agents import LLMType
+from src.utils import sanitize_messages
+
+
+class SanitizedChatModel:
+    """Wrap a chat model to normalise ``None`` message contents."""
+
+    def __init__(self, inner_model):
+        self._inner = inner_model
+
+    def _sanitize(self, messages):
+        return sanitize_messages(messages)
+
+    def invoke(self, messages, **kwargs):
+        return self._inner.invoke(self._sanitize(messages), **kwargs)
+
+    def stream(self, messages, **kwargs):
+        return self._inner.stream(self._sanitize(messages), **kwargs)
+
+    async def ainvoke(self, messages, **kwargs):
+        return await self._inner.ainvoke(self._sanitize(messages), **kwargs)
+
+    async def astream(self, messages, **kwargs):
+        async for chunk in self._inner.astream(self._sanitize(messages), **kwargs):
+            yield chunk
+
+    def __getattr__(self, item):
+        return getattr(self._inner, item)
 
 # Cache for LLM instances
-_llm_cache: dict[LLMType, ChatOpenAI] = {}
+_llm_cache: dict[LLMType, SanitizedChatModel] = {}
 
 
 def _get_config_file_path() -> str:
@@ -71,16 +98,17 @@ def _create_llm_use_conf(
     if llm_type == "reasoning":
         merged_conf["api_base"] = merged_conf.pop("base_url", None)
 
-    return (
+    base_model = (
         ChatOpenAI(**merged_conf)
         if llm_type != "reasoning"
         else ChatDeepSeek(**merged_conf)
     )
+    return SanitizedChatModel(base_model)
 
 
 def get_llm_by_type(
     llm_type: LLMType,
-) -> ChatOpenAI:
+) -> SanitizedChatModel:
     """
     Get LLM instance by type. Returns cached instance if available.
     """
