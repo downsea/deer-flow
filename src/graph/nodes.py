@@ -27,6 +27,7 @@ from src.llms.llm import get_llm_by_type
 from src.prompts.planner_model import Plan
 from src.prompts.template import apply_prompt_template
 from src.utils.json_utils import repair_json_output
+from src.utils import sanitize_messages
 
 from .types import State
 from ..config import SELECTED_SEARCH_ENGINE, SearchEngine
@@ -34,38 +35,6 @@ from ..config import SELECTED_SEARCH_ENGINE, SearchEngine
 logger = logging.getLogger(__name__)
 
 
-def _sanitize_messages(messages: list) -> list:
-    """Replace ``None`` content with an empty string.
-
-    Some language model providers (e.g. the OpenAI compatible Gemini API)
-    reject messages whose ``content`` field is ``null``. Tool call messages
-    created by upstream libraries may have ``content=None`` which leads to a
-    ``400`` response (``Expected string or list of content parts, got: null``).
-    This helper normalises such messages before they are sent to the model.
-    """
-
-    sanitized: list = []
-    for msg in messages:
-        if isinstance(msg, dict):
-            if msg.get("content") is None:
-                msg = {**msg, "content": ""}
-            sanitized.append(msg)
-            continue
-
-        content = getattr(msg, "content", None)
-        if content is None:
-            try:
-                msg.content = ""
-            except Exception:
-                try:
-                    attrs = msg.__dict__.copy()
-                    attrs["content"] = ""
-                    msg = msg.__class__(**attrs)
-                except Exception:
-                    pass
-        sanitized.append(msg)
-
-    return sanitized
 
 
 @tool
@@ -341,7 +310,7 @@ async def _execute_agent_step(
     """Helper function to execute a step using the specified agent."""
     # Sanitize conversation history to avoid ``null`` contents being passed to
     # model providers that do not support them.
-    state["messages"] = _sanitize_messages(state.get("messages", []))
+    state["messages"] = sanitize_messages(state.get("messages", []))
 
     current_plan = state.get("current_plan")
     observations = state.get("observations", [])

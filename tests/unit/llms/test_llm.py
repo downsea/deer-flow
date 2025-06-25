@@ -40,9 +40,10 @@ def test_get_env_llm_conf(monkeypatch):
 def test_create_llm_use_conf_merges_env(monkeypatch, dummy_conf):
     monkeypatch.setenv("BASIC_MODEL__API_KEY", "env_key")
     result = llm._create_llm_use_conf("basic", dummy_conf)
-    assert isinstance(result, DummyChatOpenAI)
-    assert result.kwargs["api_key"] == "env_key"
-    assert result.kwargs["base_url"] == "http://test"
+    assert isinstance(result, llm.SanitizedChatModel)
+    assert isinstance(result._inner, DummyChatOpenAI)
+    assert result._inner.kwargs["api_key"] == "env_key"
+    assert result._inner.kwargs["base_url"] == "http://test"
 
 
 def test_create_llm_use_conf_invalid_type(dummy_conf):
@@ -67,4 +68,6 @@ def test_get_llm_by_type_caches(monkeypatch, dummy_conf):
     inst1 = llm.get_llm_by_type("basic")
     inst2 = llm.get_llm_by_type("basic")
     assert inst1 is inst2
+    assert isinstance(inst1, llm.SanitizedChatModel)
+    assert isinstance(inst1._inner, DummyChatOpenAI)
     assert called["called"]
