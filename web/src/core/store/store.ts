@@ -408,7 +408,13 @@ async function persistHistory() {
   const messages = state.messageIds
     .map((id) => state.messages.get(id))
     .filter((m): m is Message => m !== undefined);
-  const title = messages.find((m) => m.agent === "planner")?.content ?? "";
+  const plannerContent = messages.find((m) => m.agent === "planner")?.content ?? "";
+  let title = "";
+  try {
+    title = JSON.parse(plannerContent).title ?? "";
+  } catch {
+    title = plannerContent;
+  }
   try {
     await saveHistory(state.threadId, title, messages);
   } catch (e) {
