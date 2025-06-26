@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Any, Dict
 import os
 
+# For patching message serialization in langchain
+from langchain_openai.chat_models import base as openai_base
+
 from langchain_openai import ChatOpenAI
 from langchain_deepseek import ChatDeepSeek
 from typing import get_args
@@ -15,6 +18,26 @@ from src.utils import (
     sanitize_messages,
     trim_messages_to_tokens,
 )
+
+_patched_conversion = False
+
+
+def _patch_message_conversion() -> None:
+    """Ensure message content is never ``None`` when serialized."""
+    global _patched_conversion
+    if _patched_conversion:
+        return
+
+    original = openai_base._convert_message_to_dict
+
+    def _patched(message):
+        data = original(message)
+        if data.get("content") is None:
+            data["content"] = ""
+        return data
+
+    openai_base._convert_message_to_dict = _patched
+    _patched_conversion = True
 
 
 class SanitizedChatModel:
@@ -44,6 +67,7 @@ class SanitizedChatModel:
 
     def __getattr__(self, item):
         return getattr(self._inner, item)
+
 
 # Cache for LLM instances
 _llm_cache: dict[LLMType, SanitizedChatModel] = {}
@@ -82,6 +106,7 @@ def _create_llm_use_conf(
     llm_type: LLMType, conf: Dict[str, Any]
 ) -> ChatOpenAI | ChatDeepSeek:
     """Create LLM instance using configuration."""
+    _patch_message_conversion()
     llm_type_config_keys = _get_llm_type_config_keys()
     config_key = llm_type_config_keys.get(llm_type)
 
