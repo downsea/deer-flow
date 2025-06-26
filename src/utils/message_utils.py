@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+import dataclasses
 
 
 def sanitize_messages(messages: list) -> list:
@@ -27,12 +28,26 @@ def sanitize_messages(messages: list) -> list:
             try:
                 msg.content = ""
             except Exception:
+                # Pydantic models provide ``model_copy`` for cloning
                 try:
-                    attrs = msg.__dict__.copy()
-                    attrs["content"] = ""
-                    msg = msg.__class__(**attrs)
+                    msg = msg.model_copy(update={"content": ""})
                 except Exception:
-                    pass
+                    # Dataclasses can be rebuilt with updated fields
+                    try:
+                        if dataclasses.is_dataclass(msg):
+                            attrs = dataclasses.asdict(msg)
+                            attrs["content"] = ""
+                            msg = msg.__class__(**attrs)
+                        else:
+                            raise ValueError
+                    except Exception:
+                        # Fallback to copying from __dict__ if available
+                        try:
+                            attrs = msg.__dict__.copy()
+                            attrs["content"] = ""
+                            msg = msg.__class__(**attrs)
+                        except Exception:
+                            pass
         sanitized.append(msg)
 
     return sanitized
