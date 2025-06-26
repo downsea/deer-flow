@@ -146,8 +146,9 @@ When planning information gathering, consider these key aspects and ensure COMPR
   - For each step, carefully assess if web search is needed:
     - Research and external data gathering: Set `need_search: true`
     - Internal data processing: Set `need_search: false`
-- Specify the exact data to be collected in step's `description`. Include a `note` if necessary.
-- Prioritize depth and volume of relevant information - limited information is not acceptable.
+  - Specify the exact data to be collected in step's `description`. Include a `note` if necessary.
+  - **Each step MUST include `step_type`** set to either `"research"` or `"processing"`. Omitting this field will break the workflow.
+  - Prioritize depth and volume of relevant information - limited information is not acceptable.
 - Use the same language as the user to generate the plan.
 - Do not include steps for summarizing or consolidating the gathered information.
 
